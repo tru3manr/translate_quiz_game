@@ -4,7 +4,7 @@ const fs = require("fs");
 const sqlite3 = require("sqlite3").verbose();
 const moment = require("moment");
 const express = require("express");
-const axios = require("axios"); // Используем axios для запросов
+const axios = require("axios");
 const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
@@ -13,7 +13,6 @@ const io = require("socket.io")(http);
 const db = new sqlite3.Database("leaderboard.db");
 
 db.serialize(() => {
-  // Создаем таблицу для хранения результатов без уникального ограничения
   db.run(`CREATE TABLE IF NOT EXISTS leaderboard (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -22,73 +21,76 @@ db.serialize(() => {
     )`);
 });
 
-// Список языков с путями к флагам (соответствуют поддерживаемым языкам LibreTranslate)
+// Список языков с путями к флагам
 const languages = [
   { name: "Английский", code: "en", flag: "/flags/gb.png" },
-  { name: "Испанский", code: "es", flag: "/flags/es.png" },
+  { name: "Чешский", code: "cs", flag: "/flags/cz.png" },
   { name: "Немецкий", code: "de", flag: "/flags/de.png" },
+  { name: "Датский", code: "da", flag: "/flags/dk.png" },
+  { name: "Испанский", code: "es", flag: "/flags/es.png" },
+  { name: "Финский", code: "fi", flag: "/flags/fi.png" },
   { name: "Французский", code: "fr", flag: "/flags/fr.png" },
+  { name: "Хорватский", code: "hr", flag: "/flags/hr.png" },
+  { name: "Венгерский", code: "hu", flag: "/flags/hu.png" },
   { name: "Итальянский", code: "it", flag: "/flags/it.png" },
-  { name: "Португальский", code: "pt", flag: "/flags/pt.png" },
+  { name: "Голландский", code: "nl", flag: "/flags/nl.png" },
+  { name: "Норвежский", code: "no", flag: "/flags/no.png" },
   { name: "Польский", code: "pl", flag: "/flags/pl.png" },
-  { name: "Турецкий", code: "tr", flag: "/flags/tr.png" },
-  { name: "Китайский", code: "zh", flag: "/flags/cn.png" },
-  { name: "Японский", code: "ja", flag: "/flags/jp.png" },
-  // Добавьте другие поддерживаемые языки LibreTranslate
+  { name: "Португальский", code: "pt", flag: "/flags/pt.png" },
+  { name: "Румынский", code: "ro", flag: "/flags/ro.png" },
+  { name: "Сербский", code: "sr", flag: "/flags/rs.png" },
+  { name: "Шведский", code: "sv", flag: "/flags/se.png" },
+  { name: "Словацкий", code: "sk", flag: "/flags/sk.png" },
+  { name: "Турецкий", code: "tr", flag: "/flags/tr.png" }
 ];
 
 // Словарь для хранения данных пользователей
 let usersData = {};
 
+// Кэш для хранения переводов
+const translationCache = {};
+
 // Настройка Express
 app.use(express.static(__dirname + "/public"));
-app.use("/flags", express.static(__dirname + "/public/flags")); // Папка с флагами
+app.use("/flags", express.static(__dirname + "/public/flags"));
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
 // Настройка Socket.IO
 io.on("connection", async (socket) => {
-  // Отправляем текущую таблицу лидеров при подключении
   const leaderboard = await getLeaderboard();
   socket.emit("leaderboard", leaderboard);
 
-  // Обработчик события начала игры
   socket.on("startGame", async (username) => {
     const userId = socket.id;
-
     usersData[userId] = {
       username: username || "Игрок",
       score: 0,
       questionCount: 0,
-      totalQuestions: 12, // Всего 12 вопросов
+      totalQuestions: 12,
     };
-    // Начинаем игру для этого пользователя
     startGame(userId, socket);
   });
 
-  // Обработчик события ответа от пользователя
   socket.on("answer", async (data) => {
     const userId = socket.id;
     handleAnswer(userId, data, socket);
   });
 
   socket.on("disconnect", () => {
-    // Удаляем данные пользователя, если необходимо
     delete usersData[socket.id];
   });
 });
 
-function startGame(userId, socket) {
+async function startGame(userId, socket) {
   const userData = usersData[userId];
 
   if (userData.questionCount >= userData.totalQuestions) {
-    // Игра окончена
     socket.emit("gameOver", {
       message: `Игра окончена! Ваш результат: ${userData.score} очков.`,
       score: userData.score,
     });
-    // Обновляем таблицу лидеров и отправляем обновлённые данные клиенту
     updateLeaderboard(userData.username, userData.score).then(async () => {
       const leaderboard = await getLeaderboard();
       socket.emit("leaderboard", leaderboard);
@@ -96,18 +98,18 @@ function startGame(userId, socket) {
     return;
   }
 
-  userData.roundPoints = 0; // Сброс очков раунда
+  userData.roundPoints = 0;
   const currentWord = getRandomRussianWord();
-
   const correctLanguageObj = getRandomLanguage();
 
+  await delay(200); // Задержка 200 мс перед каждым переводом
   translateWord(currentWord, correctLanguageObj.code).then((translatedWord) => {
     userData.currentWord = currentWord;
     userData.translatedWord = translatedWord;
     userData.correctLanguage = correctLanguageObj.name;
-    userData.correctLanguageFlag = correctLanguageObj.flag; // Сохраняем флаг
+    userData.correctLanguageFlag = correctLanguageObj.flag;
     userData.startTime = new Date();
-    userData.stage = 1; // Этап 1 - определение языка
+    userData.stage = 1;
     userData.questionCount++;
 
     const options = [
@@ -122,7 +124,6 @@ function startGame(userId, socket) {
 
     options.sort(() => Math.random() - 0.5);
 
-    // Отправляем данные вопроса клиенту
     socket.emit("question", {
       stage: 1,
       word: userData.translatedWord,
@@ -135,12 +136,11 @@ function startGame(userId, socket) {
   });
 }
 
-// Функция для обработки ответа пользователя
 async function handleAnswer(userId, data, socket) {
   const userData = usersData[userId];
 
   const endTime = new Date();
-  const timeDiff = (endTime - userData.startTime) / 1000; // Время в секундах
+  const timeDiff = (endTime - userData.startTime) / 1000;
 
   let points;
   if (timeDiff <= 2) {
@@ -154,27 +154,22 @@ async function handleAnswer(userId, data, socket) {
   let message;
 
   if (userData.stage === 1) {
-    // Этап 1 - определение языка
     if (data.answer === userData.correctLanguage) {
       userData.score += points;
-      userData.roundPoints += points; // Накопление очков раунда
-      // Отправляем сообщение о правильном ответе
+      userData.roundPoints += points;
       socket.emit("correctAnswer", {
         message: "Правильно!",
       });
 
-      // Переходим к следующему этапу
       userData.startTime = new Date();
       userData.stage = 2;
 
-      // Генерируем неправильные варианты перевода
       generateFakeTranslations(userData.currentWord).then(
         (fakeTranslations) => {
           const options = [userData.currentWord];
           options.push(...fakeTranslations);
           options.sort(() => Math.random() - 0.5);
 
-          // Отправляем данные для этапа 2
           socket.emit("question", {
             stage: 2,
             word: userData.translatedWord,
@@ -200,182 +195,179 @@ async function handleAnswer(userId, data, socket) {
         showCorrectAnswerImage: true,
         flag: userData.correctLanguageFlag,
         correctLanguage: userData.correctLanguage,
-      });
+        });
 
-      userData.roundPoints = 0; // Сброс очков раунда
-      // Переходим к следующему слову после задержки
-      setTimeout(() => {
+        userData.roundPoints = 0;
+        setTimeout(() => {
         startGame(userId, socket);
-      }, 5000); // Увеличено до 5 секунд
-    }
-  } else if (userData.stage === 2) {
-    // Этап 2 - определение перевода
-    if (data.answer === userData.currentWord) {
-      userData.score += points;
-      userData.roundPoints += points;
-      message = `Правильно!`;
-    } else {
-      message = `Неправильно. Правильный перевод: ${userData.currentWord}.`;
-    }
+        }, 3000); // Сократили время до 3 секунд
+        }
+        } else if (userData.stage === 2) {
+        if (data.answer === userData.currentWord) {
+        userData.score += points;
+        userData.roundPoints += points;
+        message = `Правильно!`;
+        } else {
+        message = `Неправильно. Правильный перевод: ${userData.currentWord}.`;
+        }
 
-    // Подготовка итогового сообщения за раунд
-    let totalPointsMessage;
-    if (userData.roundPoints > 0) {
-      totalPointsMessage = `Вы получили +${userData.roundPoints} очков за раунд.`;
-    } else if (userData.roundPoints < 0) {
-      totalPointsMessage = `Вы потеряли ${userData.roundPoints} очков за раунд.`;
-    } else {
-      totalPointsMessage = `Вы не получили очков за раунд.`;
-    }
+        let totalPointsMessage;
+        if (userData.roundPoints > 0) {
+        totalPointsMessage = `Вы получили +${userData.roundPoints} очков за раунд.`;
+        } else if (userData.roundPoints < 0) {
+        totalPointsMessage = `Вы потеряли ${Math.abs(userData.roundPoints)} очков за раунд.`;
+        } else {
+        totalPointsMessage = `Вы не получили очков за раунд.`;
+        }
 
-    // Объединение сообщений
-    message = `${message} ${totalPointsMessage}`;
+        message = `${message} ${totalPointsMessage}`;
 
-    socket.emit("result", {
-      message: message,
-      score: userData.score,
-      isCorrect: data.answer === userData.currentWord,
-      correctAnswer: userData.currentWord,
-      totalPointsForRound: userData.roundPoints,
-      showCorrectAnswerImage: false,
-    });
+        socket.emit("result", {
+        message: message,
+        score: userData.score,
+        isCorrect: data.answer === userData.currentWord,
+        correctAnswer: userData.currentWord,
+        totalPointsForRound: userData.roundPoints,
+        showCorrectAnswerImage: false,
+        });
 
-    userData.roundPoints = 0; // Сброс очков раунда
-    // Переходим к следующему слову после задержки
-    setTimeout(() => {
-      startGame(userId, socket);
-    }, 5000); // Увеличено до 5 секунд
-  }
-}
+        userData.roundPoints = 0;
+        setTimeout(() => {
+        startGame(userId, socket);
+        }, 3000); // Сократили время до 3 секунд
+        }
+        }
 
-// Функции для работы с таблицей лидеров
-function updateLeaderboard(name, score) {
-  return new Promise((resolve, reject) => {
-    const date = moment().format("YYYY-MM-DD");
-
-    // Вставляем новую запись независимо от наличия предыдущих
-    db.run(
-      `INSERT INTO leaderboard (name, score, date) VALUES (?, ?, ?)`,
-      [name, score, date],
-      function (err) {
+        function updateLeaderboard(name, score) {
+        return new Promise((resolve, reject) => {
+        const date = moment().format("YYYY-MM-DD");
+        db.run(
+        `INSERT INTO leaderboard (name, score, date) VALUES (?, ?, ?)`,
+        [name, score, date],
+        function (err) {
         if (err) {
           console.error(err);
           reject(err);
         } else {
           resolve();
         }
-      }
-    );
-  });
-}
+        }
+        );
+        });
+        }
 
-function getLeaderboard() {
-  return new Promise((resolve, reject) => {
-    const date = moment().format("YYYY-MM-DD");
-    db.all(
-      `SELECT name, score FROM leaderboard WHERE date = ? ORDER BY score DESC LIMIT 10`,
-      [date],
-      (err, rows) => {
+        function getLeaderboard() {
+        return new Promise((resolve, reject) => {
+        const date = moment().format("YYYY-MM-DD");
+        db.all(
+        `SELECT name, score FROM leaderboard WHERE date = ? ORDER BY score DESC LIMIT 10`,
+        [date],
+        (err, rows) => {
         if (err) {
           console.error(err);
           reject(err);
         } else {
           resolve(rows);
         }
-      }
-    );
-  });
-}
+        }
+        );
+        });
+        }
 
-// Получение случайного русского слова из файла
-function getRandomRussianWord() {
-  const wordsList = fs
-    .readFileSync("words.txt", "utf-8")
-    .split("\n")
-    .map((word) => word.trim())
-    .filter((word) => word);
-  const randomIndex = Math.floor(Math.random() * wordsList.length);
-  return wordsList[randomIndex];
-}
+        function getRandomRussianWord() {
+        const wordsList = fs
+        .readFileSync("words.txt", "utf-8")
+        .split("\n")
+        .map((word) => word.trim())
+        .filter((word) => word);
+        const randomIndex = Math.floor(Math.random() * wordsList.length);
+        return wordsList[randomIndex];
+        }
 
-// Получение случайного языка
-function getRandomLanguage() {
-  const randomIndex = Math.floor(Math.random() * languages.length);
-  return languages[randomIndex];
-}
+        function getRandomLanguage() {
+        const randomIndex = Math.floor(Math.random() * languages.length);
+        return languages[randomIndex];
+        }
 
-// Функция для перевода слова с использованием LibreTranslate
-function translateWord(word, targetLanguageCode) {
-  return axios.post('https://libretranslate.com/translate', {
-    q: word,
-    source: 'ru',
-    target: targetLanguageCode,
-    format: 'text'
-  })
-  .then(response => {
-    if (response.data && response.data.translatedText) {
-      return response.data.translatedText;
-    } else {
-      return null;
-    }
-  })
-  .catch(error => {
-    console.error('Ошибка при переводе:', error);
-    return null;
-  });
-}
+        async function translateWord(word, targetLanguageCode) {
+        const cacheKey = `${word}-${targetLanguageCode}`;
+        if (translationCache[cacheKey]) {
+        return translationCache[cacheKey];
+        }
+        try {
+        const response = await axios.get('https://api.mymemory.translated.net/get', {
+        params: {
+        q: word,
+        langpair: `ru|${targetLanguageCode}`,
+        de: 'rtrusevich@gmail.com'  // Замените на ваш email
+        }
+        });
+        if (response.data.responseStatus === 403) {
+        console.error('Достигнут дневной лимит переводов');
+        return null;
+        }
+        if (response.data && response.data.responseData) {
+        const translation = response.data.responseData.translatedText;
+        translationCache[cacheKey] = translation;
+        return translation;
+        } else {
+        console.error('Unexpected response:', response.data);
+        return null;
+        }
+        } catch (error) {
+        console.error('Ошибка при переводе:', error.message);
+        return null;
+        }
+        }
 
-// Генерация фейковых переводов
-function generateFakeTranslations(correctWord) {
-  return new Promise((resolve, reject) => {
-    const wordsList = fs
-      .readFileSync("words.txt", "utf-8")
-      .split("\n")
-      .map((word) => word.trim())
-      .filter((word) => word && word !== correctWord);
+        function generateFakeTranslations(correctWord) {
+        return new Promise((resolve, reject) => {
+        const wordsList = fs
+        .readFileSync("words.txt", "utf-8")
+        .split("\n")
+        .map((word) => word.trim())
+        .filter((word) => word && word !== correctWord);
 
-    const fakeTranslations = [];
-    while (fakeTranslations.length < 3) {
-      const randomIndex = Math.floor(Math.random() * wordsList.length);
-      const word = wordsList[randomIndex];
-      if (!fakeTranslations.includes(word)) {
+        const fakeTranslations = [];
+        while (fakeTranslations.length < 3) {
+        const randomIndex = Math.floor(Math.random() * wordsList.length);
+        const word = wordsList[randomIndex];
+        if (!fakeTranslations.includes(word)) {
         fakeTranslations.push(word);
-      }
-    }
-    resolve(fakeTranslations);
-  });
-}
+        }
+        }
+        resolve(fakeTranslations);
+        });
+        }
 
-// Запуск сервера
-const PORT = process.env.PORT || 3000;
+        function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
-http.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-});
+        const PORT = process.env.PORT || 3000;
 
-// Телеграм-бот
-const bot = new Telegraf(process.env.BOT_TOKEN);
+        http.listen(PORT, () => {
+        console.log(`Сервер запущен на порту ${PORT}`);
+        });
 
-// Обработчик команды /start
-bot.start((ctx) => {
-  ctx.reply(
-    "Привет! Нажмите кнопку ниже, чтобы начать игру:",
-    Markup.keyboard([
-      Markup.button.webApp(
+        const bot = new Telegraf(process.env.BOT_TOKEN);
+
+        bot.start((ctx) => {
+        ctx.reply(
+        "Привет! Нажмите кнопку ниже, чтобы начать игру:",
+        Markup.keyboard([
+        Markup.button.webApp(
         "Начать игру",
         "https://75248b24-e76f-444c-a795-808659869aec-00-ixqtk81uciw6.kirk.replit.dev/" // Замените на ваш адрес
-      ),
-    ]).resize()
-  );
-});
+        ),
+        ]).resize()
+        );
+        });
 
-// Обработчик данных от Web App
-bot.on("web_app_data", (ctx) => {
-  const data = JSON.parse(ctx.webAppData.data);
-  ctx.reply(`Спасибо за игру! Ваш результат: ${data.score} очков.`);
-  // Дополнительная обработка данных
-});
+        bot.on("web_app_data", (ctx) => {
+        const data = JSON.parse(ctx.webAppData.data);
+        ctx.reply(`Спасибо за игру! Ваш результат: ${data.score} очков.`);
+        });
 
-// Запускаем бота
-bot.launch();
-console.log("Бот запущен");
+        bot.launch();
+        console.log("Бот запущен");
