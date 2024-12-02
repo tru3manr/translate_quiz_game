@@ -1,0 +1,275 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #fffbe6; /* Светло-жёлтый фон */
+  color: #333333; /* Тёмный текст */
+}
+
+.game-container {
+  width: 90%;
+  max-width: 600px;
+  margin: 20px auto;
+  text-align: center;
+  padding: 20px;
+  background-color: #ffeb3b; /* Ярко-жёлтый фон */
+  border: 2px solid #000000; /* Чёрная рамка */
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Тень */
+  position: relative; /* Для позиционирования элементов внутри */
+}
+
+/* Верхняя панель с информацией */
+.top-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff176; /* Светло-жёлтый фон для контраста */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+h1,
+h2 {
+  color: #000000; /* Чёрный текст для заголовков */
+}
+
+.message {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.word-display {
+  margin: 20px 0;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.guess-section {
+  margin-bottom: 20px;
+}
+
+button {
+  background-color: #ffeb3b;
+  border: 2px solid #000000;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #000000;
+}
+
+button:hover {
+  background-color: #fff176;
+}
+
+/* Стили для размещения кнопок в виде сетки 2x2 или 2x2+ */
+#options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Автоматическое размещение столбцов */
+  gap: 10px; /* Отступы между кнопками */
+}
+
+/* Стили для кнопок внутри #options */
+#options button {
+  position: relative;
+  width: 100%;
+  min-height: 80px; /* Устанавливаем минимальную высоту для кнопок */
+  max-width: 150px; /* Устанавливаем максимальную ширину для кнопок */
+  padding: 10px; /* Увеличиваем внутренние отступы */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid #000000;
+  border-radius: 5px;
+  background-color: #ffeb3b;
+}
+
+/* Обёртка для флага и текста внутри кнопки */
+.button-content {
+  display: flex;
+  flex-direction: column; /* Или row, если хотите, чтобы флаг и текст были рядом */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Добавляем отступ между флагом и текстом */
+.button-content img {
+  margin-bottom: 5px; /* Отступ между изображением и текстом */
+}
+
+/* Стили для изображения флага */
+.flag-image {
+  width: auto;
+  height: 40px; /* Настройте высоту по своему усмотрению */
+}
+
+/* Увеличиваем размер текста и добавляем отступы */
+.button-content span {
+  font-size: calc(12px + 1vw); /* Увеличиваем размер текста */
+  font-weight: bold;
+  text-align: center; /* Центрируем текст */
+  padding: 5px; /* Добавляем отступы вокруг текста */
+  word-wrap: break-word; /* Перенос длинных слов */
+}
+
+#result {
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+/* Уменьшенный размер для сообщения о результате */
+.result-message {
+  font-size: 24px;
+  margin-top: 20px;
+}
+
+#leaderboard,
+#leaderboardModal .modal-content {
+  background-color: #fffde7;
+  border: 2px solid #000000;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+#leaderboard ol {
+  list-style-type: decimal;
+  padding-left: 20px;
+  text-align: left;
+}
+
+#leaderboardModal {
+  display: none;
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto; /* Исправлено на overflow-y */
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal {
+  display: none; 
+  position: fixed;
+  z-index: 2; 
+  left: 0;
+  top: 0;
+  width: 100%; 
+  height: 100%; 
+  overflow-y: auto; 
+  background-color: rgba(0, 0, 0, 0.8); 
+}
+
+.modal-content {
+  background-color: #fffde7;
+  border: 2px solid #000000;
+  border-radius: 10px;
+  margin: 10% auto; 
+  padding: 20px;
+  width: 90%;
+  max-width: 600px;
+  text-align: center;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+}
+
+#closeRulesBtn,
+#saveUsernameBtn,
+#closeGameOverBtn {
+  margin-top: 20px;
+}
+
+/* Стили для мест в таблице лидеров */
+.first-place {
+  font-size: 24px; /* Самый большой размер */
+  font-weight: bold;
+  color: #FFD700; /* Золотой цвет */
+}
+
+.second-place {
+  font-size: 22px;
+  font-weight: bold;
+  color: #C0C0C0; /* Серебряный цвет */
+}
+
+.third-place {
+  font-size: 20px;
+  font-weight: bold;
+  color: #CD7F32; /* Бронзовый цвет */
+}
+
+/* Стили для кнопки "Попробовать снова" */
+#retryBtn {
+  display: block;
+  margin: 20px auto;
+  padding: 15px 30px;
+  font-size: 24px;
+  font-weight: bold;
+  background-color: #ff5722;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#retryBtn:hover {
+  background-color: #e64a19;
+}
+
+.correct {
+  background-color: #8BC34A !important; /* Зеленый для правильного ответа */
+}
+
+.incorrect {
+  background-color: #f44336 !important; /* Красный для неправильного ответа */
+}
+
+/* Дополнительные стили для правильного ответа с отображением флага */
+.correct-answer-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.correct-answer-display img {
+  width: 60px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+/* Стили для заголовка в модальном окне */
+#nameModal h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 600px) {
+  /* Адаптивные стили для небольших экранов */
+  .game-container {
+    width: 95%;
+    padding: 10px;
+  }
+
+  #options button span {
+    font-size: calc(8px + 2vw);
+  }
+
+  .word-display {
+    font-size: 28px;
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Игра</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="game-container">
+    <!-- Верхняя панель с информацией -->
+    <div class="top-panel">
+      <div id="playerName">Игрок: <span id="displayName"></span></div>
+      <div id="scoreDisplay">Очки: 0</div>
+      <div id="questionCounter">Вопрос: 0/12</div>
+    </div>
+
+    <!-- Игровая область -->
+    <div id="game" style="display: none">
+      <!-- Сообщение (вопрос) -->
+      <div class="message">
+        <p id="message"></p>
+      </div>
+
+      <div class="word-display">
+        <p id="wordDisplay"></p>
+      </div>
+      <div class="guess-section">
+        <div id="options"></div>
+      </div>
+      <!-- Сообщение о результате -->
+      <div id="result"></div>
+    </div>
+
+    <!-- Модальное окно окончания игры -->
+    <div id="gameOverModal" class="modal">
+      <div class="modal-content">
+        <h2>Игра окончена</h2>
+        <p id="finalScore"></p>
+        <button id="closeGameOverBtn">Закрыть</button>
+      </div>
+    </div>
+
+    <!-- Таблица лидеров -->
+    <div id="leaderboard" style="display: none;">
+      <h2>Таблица лидеров</h2>
+      <ol id="top-players">
+        <!-- Список лучших игроков -->
+      </ol>
+      <button id="showAllBtn">Показать топ-10</button>
+    </div>
+
+    <!-- Кнопка "Попробовать снова" -->
+    <button id="retryBtn" style="display: none;">Попробовать снова</button>
+
+    <!-- Модальное окно с правилами игры -->
+    <div id="rulesModal" class="modal">
+      <div class="modal-content">
+        <h2>Правила</h2>
+        <p>
+          12 слов на иностранном языке. Угадай язык и перевод слова.
+          <br /><br />
+          За неверный выбор языка ты получишь -150 очков.<br /><br /> Неверный перевод не наказывается. 
+          <br /><br />
+          Торопись — чем быстрее ответ, тем больше баллов.
+          <br /><br />
+          Потом сравнишь свой результат с другими.
+        </p>
+        <button id="closeRulesBtn">Начать игру</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно для ввода имени пользователя -->
+    <div id="nameModal" class="modal">
+      <div class="modal-content">
+        <!-- Добавляем заголовок здесь -->
+        <h1>Угадай язык перевода</h1>
+        <h2>Введите ваше имя</h2>
+        <input type="text" id="usernameInput" placeholder="Ваше имя" />
+        <button id="saveUsernameBtn">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно для топ-10 игроков -->
+    <div id="leaderboardModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Топ-10 игроков</h2>
+        <ol id="top-10-players">
+          <!-- Список топ-10 игроков -->
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
